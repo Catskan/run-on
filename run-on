@@ -120,16 +120,24 @@ $CMD"
   exec ssh -A "${SSH_OPTS[@]}" -p "$EP_PORT" "$EP_ADDR" "printf %s '$b64' | base64 --decode | \"\$SHELL\" -ls"
 }
 
-# Dossier distant pour un repo partagé : workspace du poste + chemin relatif à /workspaces.
+# Dossier distant pour un repo partagé : workspace du poste + chemin relatif à /workspaces/<nom>
+# (le pont SSHFS "home entier" du poste, ex. /workspaces/macbook-m2 == $HOME sur macbook-m2) — ou,
+# si le PWD ne correspond pas au pont de ce poste précis (ex. auto essaie un autre hôte de repli),
+# on retombe sur l'ancien découpage /workspaces générique.
 remote_dir_for() {
-  local name="$1" ws
+  local name="$1" ws prefix
   case "$PWD" in
     /workspaces/*) ;;
     *) echo "run-on: PWD hors /workspaces ($PWD) — précise un dossier de repo monté, ou 'run-on local'." >&2
        exit 2 ;;
   esac
   ws="$(nr_host_field "$HOSTS" "$name" workspace)"
-  printf '%s%s' "$ws" "${PWD#/workspaces}"
+  prefix="/workspaces/$name"
+  case "$PWD" in
+    "$prefix") printf '%s' "$ws" ;;
+    "$prefix"/*) printf '%s%s' "$ws" "${PWD#"$prefix"}" ;;
+    *) printf '%s%s' "$ws" "${PWD#/workspaces}" ;;
+  esac
 }
 
 # --- Repo monté en SSHFS sous PWD ? -> exécuter chez le propriétaire, au vrai chemin ---
