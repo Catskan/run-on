@@ -1,5 +1,7 @@
 <img src="docs/logo.svg" alt="run-on" width="480">
 
+[![shellcheck](https://github.com/Catskan/run-on/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Catskan/run-on/actions/workflows/shellcheck.yml)
+
 **Give your headless coding agent a body.**
 
 `run-on` is a tiny dispatcher (~200 lines of bash) that routes a command from a brain-only
