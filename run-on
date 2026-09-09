@@ -180,11 +180,15 @@ case "$TARGET" in
     # dans ce fichier -> `auto` l'essaiera en premier. Absent, `auto` retombe direct sur l'ordre.
     active="$(cat "$ACTIVE_FILE" 2>/dev/null || true)"
     if [ -n "$active" ] && [ "$(nr_host_field "$HOSTS" "$active" ssh)" != "" ] && reachable_retry "$active"; then
-      exec_remote "$active" "$(remote_dir_for "$active")"
+      dir="$(remote_dir_for "$active")" || exit $?
+      exec_remote "$active" "$dir"
     fi
     while IFS= read -r name; do
       [ -n "$name" ] || continue
-      if reachable "$name"; then exec_remote "$name" "$(remote_dir_for "$name")"; fi
+      if reachable "$name"; then
+        dir="$(remote_dir_for "$name")" || exit $?
+        exec_remote "$name" "$dir"
+      fi
     done < <(jq -r '.order[]?' "$HOSTS")
     echo "run-on: aucun poste joignable." >&2
     run_local ;;
@@ -192,7 +196,10 @@ case "$TARGET" in
     if [ "$(nr_host_field "$HOSTS" "$TARGET" ssh)" = "" ]; then
       echo "run-on: hôte inconnu '$TARGET' (voir hosts.json)." >&2; exit 2
     fi
-    if reachable_retry "$TARGET"; then exec_remote "$TARGET" "$(remote_dir_for "$TARGET")"; else
+    if reachable_retry "$TARGET"; then
+      dir="$(remote_dir_for "$TARGET")" || exit $?
+      exec_remote "$TARGET" "$dir"
+    else
       echo "run-on: '$TARGET' : $(nr_ssh_reason)." >&2; exit 3
     fi ;;
 esac

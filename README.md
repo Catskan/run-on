@@ -8,7 +8,7 @@ machine on your network actually owns the resource the command needs: a laptop w
 a desktop with the GPU, a NAS with the disk.
 
 ```bash
-run-on auto pnpm install && pnpm build      # runs on the laptop that owns the repo
+run-on auto "pnpm install && pnpm build"    # runs on the laptop that owns the repo
 run-on auto npx vitest run                  # same
 run-on desktop-gpu "python train.py"        # explicit target: the machine with the GPU
 run-on auto git push -u origin my-branch    # network git, correct SSH identity, no key confusion
