@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# mount-repo : monte un repo distant (qui RESTE sur le poste) dans /workspaces/<nom> via SSHFS.
+# Rien n'est cloné/écrit sur le disque de la machine-cerveau. L'agent lit/édite en place ; les
+# builds via `run-on auto` s'exécutent automatiquement sur le poste propriétaire (au vrai chemin
+# local).
+#
+#   mount-repo <hôte> <chemin_distant> [nom]
+#   ex: mount-repo laptop /home/you/github/myproject myproject
+#
+# Env SSH_OVERRIDE : force l'adresse SSH (ex. user@10.8.0.5). Env SSH_PORT : montage via tunnel
+# inverse (user@localhost:PORT). L'adresse réellement utilisée est enregistrée dans mounts.tsv.
+set -euo pipefail
+
+_lib="/usr/local/lib/nas-remote.sh"
+[ -f "$_lib" ] || _lib="$(dirname "$(readlink -f "$0")")/lib/nas-remote.sh"
+# shellcheck source=/dev/null
+. "$_lib"
+
+SSHFS_KEY="${SSH_KEY:-$HOME/.ssh/id_run_on_clients}"
+
+HOSTS="$(nr_find_hosts || true)"
+[ -n "$HOSTS" ] || { echo "mount-repo: hosts.json introuvable." >&2; exit 2; }
+
+host="${1:?Usage: mount-repo <hôte> <chemin_distant> [nom]}"
+remote="${2:?Usage: mount-repo <hôte> <chemin_distant> [nom]}"
+name="${3:-$(basename "$remote")}"
+
+ssh="${SSH_OVERRIDE:-$(nr_host_field "$HOSTS" "$host" ssh)}"
+[ -n "$ssh" ] || { echo "mount-repo: hôte inconnu '$host' et pas de SSH_OVERRIDE." >&2; exit 2; }
+
+# mDNS : sauf SSH_OVERRIDE explicite, suivre l'IP courante (Wi-Fi/Ethernet) si un nom .local existe.
+if [ -z "${SSH_OVERRIDE:-}" ]; then
+  mdns="$(nr_host_field "$HOSTS" "$host" mdns)"
+  if [ -n "$mdns" ]; then
+    ip="$(resolve_mdns "$mdns" || true)"
+    [ -n "$ip" ] && ssh="${ssh%@*}@$ip"
+  fi
+fi
+
+# Port : SSH_PORT (tunnel inverse) prioritaire ; sinon port éventuellement EMBARQUÉ dans l'adresse.
+# split_endpoint (lib) le sépare -> `ssh` devient l'adresse nue et `ssh_port` le port. Sans ça,
+# sshfs verrait "host:2022:/chemin" (cassé).
+if [ -n "${SSH_PORT:-}" ]; then
+  ssh_port="$SSH_PORT"
+else
+  split_endpoint "$ssh"; ssh="$EP_ADDR"; ssh_port="$EP_PORT"
+fi
+
+# Adresse enregistrée dans mounts.tsv : port inclus si != 22.
+ssh_record="$ssh"; [ "$ssh_port" != 22 ] && ssh_record="$ssh:$ssh_port"
+
+mnt="/workspaces/$name"
+mkdir -p "$mnt"
+
+# État du mount SANS I/O sur le VFS (plus de `ls` qui pourrait figer en état D).
+if is_mounted "$mnt"; then
+  if mount_healthy "$mnt"; then
+    prev="$(awk -F'\t' -v m="$mnt" '$1==m{print $4}' "$MOUNTS" 2>/dev/null | head -1)"
+    if [ "$prev" = "$ssh_record" ]; then
+      echo "mount-repo: $mnt déjà monté (via $ssh_record)." >&2; exit 0
+    fi
+    echo "mount-repo: remontage de $mnt (adresse changée: ${prev:-?} → $ssh_record)" >&2
+  else
+    echo "mount-repo: $mnt est MORT (daemon sshfs disparu) -> démontage forcé puis remontage." >&2
+  fi
+  nr_lazy_unmount "$mnt"
+fi
+
+# Clé d'hôte : tunnel inverse / localhost -> NON épinglée (varie d'un poste à l'autre ; le tunnel
+# amont est déjà authentifié par clé). Vrai hôte (LAN ou VPN) -> accept-new (épinglé).
+SSHFS_OPTS="IdentityFile=$SSHFS_KEY,reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,follow_symlinks"
+PORTOPT=(); [ "$ssh_port" != 22 ] && PORTOPT=(-p "$ssh_port")
+notrust=""
+[ -n "${SSH_PORT:-}" ] && notrust=1
+case "$ssh" in *@localhost|*@127.0.0.1) notrust=1 ;; esac
+if [ -n "$notrust" ]; then
+  SSHFS_OPTS="$SSHFS_OPTS,StrictHostKeyChecking=no,UserKnownHostsFile=/dev/null"
+else
+  SSHFS_OPTS="$SSHFS_OPTS,StrictHostKeyChecking=accept-new"
+fi
+
+# Retry/backoff : un échec transitoire (sortie de veille, sshd pas encore prêt) ne fait plus
+# échouer sec le montage.
+do_sshfs() { sshfs "${PORTOPT[@]}" "${ssh}:${remote}" "$mnt" -o "$SSHFS_OPTS"; }
+retry do_sshfs
+
+# Registre : mutation sous verrou + atomique.
+nr_mounts_lock
+nr_tsv_upsert "$mnt" "$host" "$remote" "$ssh_record"
+
+echo "monté: ${ssh}:${remote} → $mnt   (run-on auto y ciblera '$host')"

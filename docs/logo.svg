@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160" role="img" aria-label="run-on">
+  <circle cx="80" cy="80" r="30" fill="none" stroke="#14b8a6" stroke-width="4" stroke-dasharray="6 5"/>
+  <g stroke="#14b8a6" stroke-width="3">
+    <line x1="108" y1="65" x2="150" y2="40"/>
+    <line x1="110" y1="80" x2="150" y2="80"/>
+    <line x1="108" y1="95" x2="150" y2="120"/>
+  </g>
+  <g fill="#14b8a6">
+    <circle cx="150" cy="40" r="9"/>
+    <circle cx="150" cy="80" r="9"/>
+    <circle cx="150" cy="120" r="9"/>
+  </g>
+  <text x="192" y="94" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="56" font-weight="700" fill="#6b7280">run-on</text>
+  <text x="194" y="118" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#9ca3af">one stateless brain, N pairs of hands</text>
+</svg>

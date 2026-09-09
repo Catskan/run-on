@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# which-host : indique l'hôte d'exécution actif et l'état de joignabilité des postes.
+# Utile à un agent pour adapter ses commandes à l'OS cible avant d'appeler `run-on`.
+# Utilise EXACTEMENT la même résolution/joignabilité que run-on (lib partagée) -> le diagnostic
+# ne diverge jamais de la décision réelle.
+set -euo pipefail
+
+_lib="/usr/local/lib/nas-remote.sh"
+[ -f "$_lib" ] || _lib="$(dirname "$(readlink -f "$0")")/lib/nas-remote.sh"
+# shellcheck source=/dev/null
+. "$_lib"
+
+ACTIVE_FILE="${RUNON_STATE_DIR:-$HOME/.config/run-on}/active-host"
+
+HOSTS="$(nr_find_hosts || true)"
+[ -n "$HOSTS" ] || { echo "which-host: hosts.json introuvable." >&2; exit 2; }
+
+active="$(cat "$ACTIVE_FILE" 2>/dev/null || true)"
+active_os="$(cat "${RUNON_STATE_DIR:-$HOME/.config/run-on}/active-os" 2>/dev/null || true)"
+echo "Hôte actif (estampillé par la connexion) : ${active:-aucun}${active_os:+ ($active_os)}"
+echo "Ordre de fallback : $(jq -r '.order | join(" → ")' "$HOSTS")  (puis repli local si RUNON_FALLBACK_LOCAL=1)"
+echo
+printf "%-14s %-8s %-30s %s\n" "POSTE" "OS" "SSH" "ÉTAT"
+for name in $(jq -r '.hosts | keys[]' "$HOSTS"); do
+  # host_ssh_addr() est LA fonction de résolution partagée avec run-on : public si
+  # RUNON_PREFER_PUBLIC=1, puis mDNS, puis IP statique. On l'APPELLE au lieu de la réimplémenter —
+  # un outil de diagnostic qui ne montre pas ce que fait l'outil réel envoie chercher au mauvais
+  # endroit.
+  ssh="$(host_ssh_addr "$name")"
+  os="$(nr_host_field "$HOSTS" "$name" os)"
+  if reachable_ssh "$ssh"; then etat="joignable ✅"; else etat="injoignable ❌"; fi
+  printf "%-14s %-8s %-30s %s\n" "$name" "$os" "$ssh" "$etat"
+done

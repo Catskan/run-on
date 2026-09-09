@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# umount-repo : démonte un repo SSHFS monté par mount-repo.
+#   umount-repo <nom|chemin>
+set -euo pipefail
+
+_lib="/usr/local/lib/nas-remote.sh"
+[ -f "$_lib" ] || _lib="$(dirname "$(readlink -f "$0")")/lib/nas-remote.sh"
+# shellcheck source=/dev/null
+. "$_lib"
+
+arg="${1:?Usage: umount-repo <nom|chemin>}"
+case "$arg" in
+  /*) mnt="$arg" ;;
+  *)  mnt="/workspaces/$arg" ;;
+esac
+
+# Démonter d'abord, avec lazy en DERNIER recours. On ne retire l'entrée du registre QUE si le
+# démontage a réellement abouti : sinon un mount resté actif (EBUSY : un shell a son cwd dedans)
+# disparaîtrait du registre -> run-on ne routerait plus les builds vers le propriétaire (désynchro
+# permanente).
+if fusermount -u "$mnt" 2>/dev/null || fusermount3 -u "$mnt" 2>/dev/null || umount "$mnt" 2>/dev/null; then
+  :
+elif fusermount -uz "$mnt" 2>/dev/null || fusermount3 -uz "$mnt" 2>/dev/null || umount -l "$mnt" 2>/dev/null; then
+  echo "umount-repo: $mnt occupé -> démonté en lazy (-z)." >&2
+else
+  if is_mounted "$mnt"; then
+    echo "umount-repo: ÉCHEC du démontage de $mnt — entrée du registre CONSERVÉE." >&2
+    exit 1
+  fi
+  echo "umount-repo: $mnt déjà démonté." >&2
+fi
+
+# Démontage confirmé : mutation du registre sous verrou.
+nr_mounts_lock
+nr_tsv_remove "$mnt"
+rmdir "$mnt" 2>/dev/null || true
+echo "démonté: $mnt"
