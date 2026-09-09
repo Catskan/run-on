@@ -136,7 +136,9 @@ nr_ssh_reason() {
 }
 
 # --- État des montages SSHFS (SANS jamais toucher le VFS) -----------------------
-is_mounted() { grep -q " $1 fuse" /proc/mounts 2>/dev/null; }   # instantané
+# `mount` (sans arg) liste juste la table déjà en mémoire, jamais d'I/O sur le FS monté -> aussi
+# instantané que /proc/mounts, mais portable (macOS n'a pas de procfs, /proc/mounts y est vide).
+is_mounted() { mount 2>/dev/null | grep -qF " on $1 "; }
 
 # nr_regex_escape : échappe les métacaractères ERE d'un chemin pour pgrep/pkill -f.
 nr_regex_escape() { printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|/]/\\&/g'; }
@@ -173,7 +175,10 @@ nr_lazy_unmount() {
   local mnt="$1" m
   m="$(nr_regex_escape "$mnt")"
   pkill -KILL -f "sshfs([^|]* )$m( |$)" 2>/dev/null || true
-  fusermount -uz "$mnt" 2>/dev/null || fusermount3 -uz "$mnt" 2>/dev/null || umount -l "$mnt" 2>/dev/null || true
+  # fusermount(3) -uz : lazy unmount Linux. macOS n'a ni fusermount ni `umount -l` (BSD) -> repli
+  # `umount -f` (force), qui marche des deux côtés pour un mount FUSE/macFUSE déjà mort.
+  fusermount -uz "$mnt" 2>/dev/null || fusermount3 -uz "$mnt" 2>/dev/null \
+    || umount -l "$mnt" 2>/dev/null || umount -f "$mnt" 2>/dev/null || true
 }
 
 # --- mounts.tsv : mutations sérialisées (flock) + atomiques (mktemp+mv) -----

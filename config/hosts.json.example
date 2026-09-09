@@ -2,21 +2,21 @@
   "order": ["laptop", "desktop-gpu"],
   "hosts": {
     "laptop": {
-      "ssh": "you@100.64.0.2:2022",
-      "public": "you@203.0.113.10:2022",
+      "ssh": "you@100.64.0.21:22",
+      "public": "you@203.0.113.10:22",
       "os": "macos",
-      "workspace": "/Volumes/workspaces",
-      "note": "Adresse VPN (Tailscale/WireGuard) en primaire : stable même si le LAN change. `public` sert de repli si le VPN est down (RUNON_PREFER_PUBLIC=1)."
+      "workspace": "/Users/you",
+      "note": "Adresse VPN (Tailscale/WireGuard) en primaire : stable même si le LAN change. `public` sert de repli si le VPN est down (RUNON_PREFER_PUBLIC=1). `workspace` = le vrai $HOME de ce poste : /workspaces/laptop (côté cerveau) doit être le pont SSHFS de ce home entier pour que le calcul de chemin distant tombe juste."
     },
     "desktop-gpu": {
-      "ssh": "you@192.168.1.4",
-      "public": "you@203.0.113.20:2322",
+      "ssh": "you@192.168.50.4:3222",
+      "public": "you@203.0.113.20:3222",
       "os": "windows",
-      "workspace": "W:/workspaces",
+      "workspace": "C:/Users/you",
       "note": "Poste avec GPU (ComfyUI, ROCm/CUDA) — cible explicite via `run-on desktop-gpu \"<cmd>\"` quand la commande a besoin de ce matériel précis."
     },
     "storage-nas": {
-      "ssh": "you@100.64.0.6:7258",
+      "ssh": "you@100.64.0.26:2222",
       "os": "linux",
       "role": "storage",
       "note": "Stockage seul (pas d'accès GitHub). Hors `.order` : run-on n'y route ni builds ni git réseau. Peut rester le propriétaire d'un repo monté en lecture/édition."

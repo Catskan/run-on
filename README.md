@@ -93,6 +93,10 @@ Straight answers to "is this actually usable as-is":
   repo layered on top of this one — not a reason to hold this one back.
 - **`mount-repo` needs `sshfs`/macFUSE installed on the brain machine** — not bundled (packaging
   varies too much by OS to script reliably).
+- **Every dispatch forwards your SSH agent (`ssh -A`) to the target host.** That's what lets a
+  remote `git push` use your real GitHub identity without copying a key onto every machine — but
+  it also means anything that runs on that host during the connection can ask your agent to sign
+  with your loaded keys. Only point `hosts.json` at machines you already trust with that key.
 - Windows as a **target** is supported (PowerShell exec path); Windows as the **brain** running
   `run-on` itself is untested.
 
