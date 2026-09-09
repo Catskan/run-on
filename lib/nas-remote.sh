@@ -124,14 +124,14 @@ reachable_ssh_retry() { retry reachable_ssh "$1"; }
 nr_ssh_reason() {
   case "$NR_SSH_LAST_ERR" in
     *"Permission denied"*|*"publickey"*|*"Too many authentication"*|*"Authentication failed"*)
-        echo "authentification refusée (clé client non autorisée sur cet hôte ?)" ;;
-    *"Connection refused"*)   echo "connexion refusée (aucun sshd sur ce port ?)" ;;
-    *"timed out"*|*"timeout"*) echo "délai dépassé (hôte éteint / réseau coupé ?)" ;;
-    *"No route to host"*|*"Network is unreachable"*) echo "pas de route réseau" ;;
-    *"Host key verification"*|*"IDENTIFICATION HAS CHANGED"*) echo "clé d'hôte refusée/changée" ;;
-    *"resolve"*|*"Name or service not known"*) echo "nom introuvable (DNS/mDNS)" ;;
-    "") echo "injoignable" ;;
-    *)  echo "injoignable ($(printf '%s' "$NR_SSH_LAST_ERR" | head -1))" ;;
+        echo "authentication refused (client key not authorized on this host?)" ;;
+    *"Connection refused"*)   echo "connection refused (no sshd on this port?)" ;;
+    *"timed out"*|*"timeout"*) echo "timed out (host off / network down?)" ;;
+    *"No route to host"*|*"Network is unreachable"*) echo "no network route" ;;
+    *"Host key verification"*|*"IDENTIFICATION HAS CHANGED"*) echo "host key rejected/changed" ;;
+    *"resolve"*|*"Name or service not known"*) echo "name not found (DNS/mDNS)" ;;
+    "") echo "unreachable" ;;
+    *)  echo "unreachable ($(printf '%s' "$NR_SSH_LAST_ERR" | head -1))" ;;
   esac
 }
 

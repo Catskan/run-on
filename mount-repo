@@ -19,14 +19,14 @@ _lib="/usr/local/lib/nas-remote.sh"
 SSHFS_KEY="${SSH_KEY:-$HOME/.ssh/id_run_on_clients}"
 
 HOSTS="$(nr_find_hosts || true)"
-[ -n "$HOSTS" ] || { echo "mount-repo: hosts.json introuvable." >&2; exit 2; }
+[ -n "$HOSTS" ] || { echo "mount-repo: hosts.json not found." >&2; exit 2; }
 
-host="${1:?Usage: mount-repo <hôte> <chemin_distant> [nom]}"
-remote="${2:?Usage: mount-repo <hôte> <chemin_distant> [nom]}"
+host="${1:?Usage: mount-repo <host> <remote_path> [name]}"
+remote="${2:?Usage: mount-repo <host> <remote_path> [name]}"
 name="${3:-$(basename "$remote")}"
 
 ssh="${SSH_OVERRIDE:-$(nr_host_field "$HOSTS" "$host" ssh)}"
-[ -n "$ssh" ] || { echo "mount-repo: hôte inconnu '$host' et pas de SSH_OVERRIDE." >&2; exit 2; }
+[ -n "$ssh" ] || { echo "mount-repo: unknown host '$host' and no SSH_OVERRIDE." >&2; exit 2; }
 
 # mDNS : sauf SSH_OVERRIDE explicite, suivre l'IP courante (Wi-Fi/Ethernet) si un nom .local existe.
 if [ -z "${SSH_OVERRIDE:-}" ]; then
@@ -57,11 +57,11 @@ if is_mounted "$mnt"; then
   if mount_healthy "$mnt"; then
     prev="$(awk -F'\t' -v m="$mnt" '$1==m{print $4}' "$MOUNTS" 2>/dev/null | head -1)"
     if [ "$prev" = "$ssh_record" ]; then
-      echo "mount-repo: $mnt déjà monté (via $ssh_record)." >&2; exit 0
+      echo "mount-repo: $mnt already mounted (via $ssh_record)." >&2; exit 0
     fi
-    echo "mount-repo: remontage de $mnt (adresse changée: ${prev:-?} → $ssh_record)" >&2
+    echo "mount-repo: remounting $mnt (address changed: ${prev:-?} → $ssh_record)" >&2
   else
-    echo "mount-repo: $mnt est MORT (daemon sshfs disparu) -> démontage forcé puis remontage." >&2
+    echo "mount-repo: $mnt is DEAD (sshfs daemon gone) -> forcing unmount then remount." >&2
   fi
   nr_lazy_unmount "$mnt"
 fi
@@ -88,4 +88,4 @@ retry do_sshfs
 nr_mounts_lock
 nr_tsv_upsert "$mnt" "$host" "$remote" "$ssh_record"
 
-echo "monté: ${ssh}:${remote} → $mnt   (run-on auto y ciblera '$host')"
+echo "mounted: ${ssh}:${remote} → $mnt   (run-on auto will target '$host' here)"

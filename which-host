@@ -13,14 +13,14 @@ _lib="/usr/local/lib/nas-remote.sh"
 ACTIVE_FILE="${RUNON_STATE_DIR:-$HOME/.config/run-on}/active-host"
 
 HOSTS="$(nr_find_hosts || true)"
-[ -n "$HOSTS" ] || { echo "which-host: hosts.json introuvable." >&2; exit 2; }
+[ -n "$HOSTS" ] || { echo "which-host: hosts.json not found." >&2; exit 2; }
 
 active="$(cat "$ACTIVE_FILE" 2>/dev/null || true)"
 active_os="$(cat "${RUNON_STATE_DIR:-$HOME/.config/run-on}/active-os" 2>/dev/null || true)"
-echo "Hôte actif (estampillé par la connexion) : ${active:-aucun}${active_os:+ ($active_os)}"
-echo "Ordre de fallback : $(jq -r '.order | join(" → ")' "$HOSTS")  (puis repli local si RUNON_FALLBACK_LOCAL=1)"
+echo "Active host (stamped by the connection): ${active:-none}${active_os:+ ($active_os)}"
+echo "Fallback order: $(jq -r '.order | join(" → ")' "$HOSTS")  (then local fallback if RUNON_FALLBACK_LOCAL=1)"
 echo
-printf "%-14s %-8s %-30s %s\n" "POSTE" "OS" "SSH" "ÉTAT"
+printf "%-14s %-8s %-30s %s\n" "HOST" "OS" "SSH" "STATE"
 for name in $(jq -r '.hosts | keys[]' "$HOSTS"); do
   # host_ssh_addr() est LA fonction de résolution partagée avec run-on : public si
   # RUNON_PREFER_PUBLIC=1, puis mDNS, puis IP statique. On l'APPELLE au lieu de la réimplémenter —
@@ -28,6 +28,6 @@ for name in $(jq -r '.hosts | keys[]' "$HOSTS"); do
   # endroit.
   ssh="$(host_ssh_addr "$name")"
   os="$(nr_host_field "$HOSTS" "$name" os)"
-  if reachable_ssh "$ssh"; then etat="joignable ✅"; else etat="injoignable ❌"; fi
+  if reachable_ssh "$ssh"; then etat="reachable ✅"; else etat="unreachable ❌"; fi
   printf "%-14s %-8s %-30s %s\n" "$name" "$os" "$ssh" "$etat"
 done

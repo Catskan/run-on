@@ -22,7 +22,7 @@ _lib="/usr/local/lib/nas-remote.sh"
 ACTIVE_FILE="${RUNON_STATE_DIR:-$HOME/.config/run-on}/active-host"
 
 HOSTS="$(nr_find_hosts || true)"
-[ -n "$HOSTS" ] || { echo "run-on: hosts.json introuvable." >&2; exit 2; }
+[ -n "$HOSTS" ] || { echo "run-on: hosts.json not found." >&2; exit 2; }
 
 TARGET="${1:-auto}"; shift || true
 # Contrat d'arguments (F17, anti-quoting) — préserve argv FIDÈLEMENT :
@@ -33,7 +33,7 @@ TARGET="${1:-auto}"; shift || true
 #     « no matches found » de zsh. CMD reste une chaîne POSIX valide : détection is_network_git,
 #     log et payload unix/local la consomment sans changement.
 ARGS=("$@")
-[ "${#ARGS[@]}" -gt 0 ] || { echo "run-on: aucune commande fournie." >&2; exit 2; }
+[ "${#ARGS[@]}" -gt 0 ] || { echo "run-on: no command given." >&2; exit 2; }
 if [ "${#ARGS[@]}" -eq 1 ]; then
   CMD="${ARGS[0]}"
 else
@@ -53,11 +53,11 @@ is_network_git() {
 
 run_local() {
   if [ "$TARGET" = "local" ] || [ "${RUNON_FALLBACK_LOCAL:-0}" = "1" ]; then
-    echo "run-on → local (brain) : $CMD" >&2
+    echo "run-on → local (brain): $CMD" >&2
     exec bash -lc "$CMD"
   fi
-  echo "run-on: aucun poste joignable. Repli local désactivé (builds/git ne doivent pas tourner" >&2
-  echo "        ici, mauvais environnement). Réessaie dans ~30 s, ou force avec RUNON_FALLBACK_LOCAL=1 / 'run-on local'." >&2
+  echo "run-on: no host reachable. Local fallback disabled (builds/git shouldn't run" >&2
+  echo "        here, wrong environment). Retry in ~30s, or force with RUNON_FALLBACK_LOCAL=1 / 'run-on local'." >&2
   exit 3
 }
 
@@ -72,7 +72,7 @@ exec_remote() {
   ssh="${ssh_override:-$(host_ssh_addr "$name")}"
   split_endpoint "$ssh"
   os="$(nr_host_field "$HOSTS" "$name" os)"
-  echo "run-on → $name ($os, $EP_ADDR:$EP_PORT) : [$dir] $CMD" >&2
+  echo "run-on → $name ($os, $EP_ADDR:$EP_PORT): [$dir] $CMD" >&2
 
   if [ "$os" = "windows" ]; then
     # $dir au format sftp (/M:/...) -> retirer le / initial ; échapper les apostrophes pour PowerShell.
@@ -128,7 +128,7 @@ remote_dir_for() {
   local name="$1" ws prefix
   case "$PWD" in
     /workspaces/*) ;;
-    *) echo "run-on: PWD hors /workspaces ($PWD) — précise un dossier de repo monté, ou 'run-on local'." >&2
+    *) echo "run-on: PWD outside /workspaces ($PWD) — specify a mounted repo directory, or 'run-on local'." >&2
        exit 2 ;;
   esac
   ws="$(nr_host_field "$HOSTS" "$name" workspace)"
@@ -160,9 +160,9 @@ if [ -n "$MOUNT_HOST" ] && [ "$TARGET" != "local" ]; then
   # + commande git RÉSEAU -> impossible de l'exécuter là. Message clair (au lieu d'un "injoignable"
   # trompeur) : pousse/fetch depuis un client qui voit ce dépôt.
   if is_network_git && [ "$(nr_host_field "$HOSTS" "$MOUNT_HOST" role)" = "storage" ]; then
-    echo "run-on: '$MOUNT_HOST' héberge ce repo mais est du STOCKAGE (pas d'accès GitHub) -> une" >&2
-    echo "        opération git réseau ne peut pas s'y exécuter. Pousse/fetch depuis un client qui" >&2
-    echo "        voit ce dépôt (ex. le partage monté sur un poste de dev) : cd <repo> && git push." >&2
+    echo "run-on: '$MOUNT_HOST' hosts this repo but is STORAGE-only (no GitHub access) -> a" >&2
+    echo "        network git operation can't run there. Push/fetch from a client that" >&2
+    echo "        can see this repo (e.g. the share mounted on a dev machine): cd <repo> && git push." >&2
     exit 4
   fi
   # Tunnel inverse (user@localhost[:port]) : joignable QUE par ce tunnel -> tel quel.
@@ -174,7 +174,7 @@ if [ -n "$MOUNT_HOST" ] && [ "$TARGET" != "local" ]; then
       [ -n "$ssh_addr" ] || ssh_addr="$MOUNT_SSH" ;;
   esac
   if reachable_ssh_retry "$ssh_addr"; then exec_remote "$MOUNT_HOST" "$MOUNT_DIR" "$ssh_addr"; fi
-  echo "run-on: '$MOUNT_HOST' ($ssh_addr, propriétaire du repo monté) : $(nr_ssh_reason)." >&2
+  echo "run-on: '$MOUNT_HOST' ($ssh_addr, owner of the mounted repo): $(nr_ssh_reason)." >&2
   exit 3
 fi
 
@@ -198,16 +198,16 @@ case "$TARGET" in
         exec_remote "$name" "$dir"
       fi
     done < <(jq -r '.order[]?' "$HOSTS")
-    echo "run-on: aucun poste joignable." >&2
+    echo "run-on: no host reachable." >&2
     run_local ;;
   *)
     if [ "$(nr_host_field "$HOSTS" "$TARGET" ssh)" = "" ]; then
-      echo "run-on: hôte inconnu '$TARGET' (voir hosts.json)." >&2; exit 2
+      echo "run-on: unknown host '$TARGET' (see hosts.json)." >&2; exit 2
     fi
     if reachable_retry "$TARGET"; then
       dir="$(remote_dir_for "$TARGET")" || exit $?
       exec_remote "$TARGET" "$dir"
     else
-      echo "run-on: '$TARGET' : $(nr_ssh_reason)." >&2; exit 3
+      echo "run-on: '$TARGET': $(nr_ssh_reason)." >&2; exit 3
     fi ;;
 esac

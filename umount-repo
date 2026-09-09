@@ -8,7 +8,7 @@ _lib="/usr/local/lib/nas-remote.sh"
 # shellcheck source=/dev/null
 . "$_lib"
 
-arg="${1:?Usage: umount-repo <nom|chemin>}"
+arg="${1:?Usage: umount-repo <name|path>}"
 case "$arg" in
   /*) mnt="$arg" ;;
   *)  mnt="/workspaces/$arg" ;;
@@ -21,17 +21,17 @@ esac
 if fusermount -u "$mnt" 2>/dev/null || fusermount3 -u "$mnt" 2>/dev/null || umount "$mnt" 2>/dev/null; then
   :
 elif fusermount -uz "$mnt" 2>/dev/null || fusermount3 -uz "$mnt" 2>/dev/null || umount -l "$mnt" 2>/dev/null; then
-  echo "umount-repo: $mnt occupé -> démonté en lazy (-z)." >&2
+  echo "umount-repo: $mnt busy -> lazy-unmounted (-z)." >&2
 else
   if is_mounted "$mnt"; then
-    echo "umount-repo: ÉCHEC du démontage de $mnt — entrée du registre CONSERVÉE." >&2
+    echo "umount-repo: FAILED to unmount $mnt — registry entry KEPT." >&2
     exit 1
   fi
-  echo "umount-repo: $mnt déjà démonté." >&2
+  echo "umount-repo: $mnt already unmounted." >&2
 fi
 
 # Démontage confirmé : mutation du registre sous verrou.
 nr_mounts_lock
 nr_tsv_remove "$mnt"
 rmdir "$mnt" 2>/dev/null || true
-echo "démonté: $mnt"
+echo "unmounted: $mnt"
