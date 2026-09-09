@@ -1,0 +1,13 @@
+{"version": 2, "width": 80, "height": 24, "timestamp": 1788983606, "env": {"SHELL": "/bin/bash", "TERM": "xterm"}}
+[0.01042, "o", "Hôte actif (estampillé par la connexion) : laptop (macos)\r\n"]
+[0.046948, "o", "Ordre de fallback : laptop → old-laptop → desktop-gpu  (puis repli NAS si RUNON_FALLBACK_NAS=1)\r\n"]
+[0.047009, "o", "\r\nPOSTE          OS       SSH                            ÉTAT\r\n"]
+[6.178088, "o", "old-laptop    macos    you@100.64.0.11:2122          injoignable ❌\r\n"]
+[6.34758, "o", "laptop     macos    you@100.64.0.10:2022       joignable ✅\r\n"]
+[6.553857, "o", "storage-nas            linux    you@100.64.0.12:7258      joignable ✅\r\n"]
+[6.649576, "o", "desktop-gpu     windows  you@203.0.113.20:2322         injoignable ❌\r\n"]
+[6.649788, "o", "\r\n"]
+[6.793923, "o", "run-on → laptop (macos, you@100.64.0.10:2022) : [/Users/you/run-on] node -v && pnpm -v && echo ok\r\n"]
+[6.912532, "o", "v25.9.0\r\n"]
+[7.17604, "o", "10.28.1\r\n"]
+[7.180516, "o", "ok\r\n"]

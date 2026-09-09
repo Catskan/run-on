@@ -14,6 +14,11 @@ run-on desktop-gpu "python train.py"        # explicit target: the machine with 
 run-on auto git push -u origin my-branch    # network git, correct SSH identity, no key confusion
 ```
 
+<img src="docs/demo.gif" alt="which-host and run-on auto dispatching a real command to a laptop over SSH" width="640">
+
+_Real session, hostnames/IPs replaced with placeholders. `which-host` lists the registry and
+reachability; `run-on auto` picks the reachable host and runs the command there._
+
 ## Why this exists
 
 Most "Claude Code homelab" setups move the _agent_ to the machine that has the toolchain — one
