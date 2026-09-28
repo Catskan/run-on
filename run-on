@@ -20,6 +20,7 @@ _lib="/usr/local/lib/nas-remote.sh"
 . "$_lib"
 
 ACTIVE_FILE="${RUNON_STATE_DIR:-$HOME/.config/run-on}/active-host"
+LOCAL_DIRS="${RUNON_STATE_DIR:-$HOME/.config/run-on}/local-dirs"
 
 HOSTS="$(nr_find_hosts || true)"
 [ -n "$HOSTS" ] || { echo "run-on: hosts.json not found." >&2; exit 2; }
@@ -176,6 +177,17 @@ if [ -n "$MOUNT_HOST" ] && [ "$TARGET" != "local" ]; then
   if reachable_ssh_retry "$ssh_addr"; then exec_remote "$MOUNT_HOST" "$MOUNT_DIR" "$ssh_addr"; fi
   echo "run-on: '$MOUNT_HOST' ($ssh_addr, owner of the mounted repo): $(nr_ssh_reason)." >&2
   exit 3
+fi
+
+# --- Dossier que la machine-cerveau possède en propre (clone LOCAL, pas un pont SSHFS) ---
+# Un préfixe par ligne dans LOCAL_DIRS. Testé APRÈS le registre des montages : un poste monté
+# par-dessus ce dossier garde la priorité. Sans ça, `auto` enverrait la commande au premier poste
+# joignable, qui n'a pas ce chemin.
+if [ "$TARGET" = "auto" ] && [ -f "$LOCAL_DIRS" ]; then
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    case "$PWD/" in "$d"/*) TARGET=local; run_local ;; esac
+  done < "$LOCAL_DIRS"
 fi
 
 # --- Résolution standard ---
